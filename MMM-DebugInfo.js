@@ -5,7 +5,16 @@ Module.register('MMM-DebugInfo', {
 
   start() {
     this.clientIp = 'Detecting...';
+    this.configFile = '';
     this.getClientIp();
+    this.sendSocketNotification('GET_CONFIG_FILE');
+  },
+
+  socketNotificationReceived(notification, payload) {
+    if (notification === 'CONFIG_FILE') {
+      this.configFile = payload;
+      this.updateDom();
+    }
   },
 
   getClientIp() {
@@ -28,7 +37,7 @@ Module.register('MMM-DebugInfo', {
   getDom() {
     const wrapper = document.createElement('div');
     wrapper.className = 'dimmed xxsmall';
-    wrapper.innerHTML = `Device: ${this.config.displayName} | IP: ${this.clientIp}`;
+    wrapper.innerHTML = `${this.config.displayName} | ${this.clientIp} | ${this.configFile}`;
     return wrapper;
   }
 });
