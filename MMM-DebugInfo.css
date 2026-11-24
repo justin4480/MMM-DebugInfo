@@ -18,43 +18,6 @@
   text-align: left;
 }
 
-/* Same as the intercom's mic / camera badges (bottom centre), sitting right after them.
-   Absolute inside the full-screen region (which spans the viewport). */
-.dbg-badge {
-  position: absolute;
-  left: var(--dbg-left, calc(50% + 22px));
-  bottom: var(--dbg-bottom, 39px);
-  z-index: 30;
-  pointer-events: auto;
-  box-sizing: border-box;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.62rem;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 0.5px solid rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  transition: transform 0.08s ease, background 0.12s ease;
-}
-
-.dbg-badge::before {
-  content: "";
-  position: absolute;
-  inset: -10px;
-}
-
-.dbg-badge:active {
-  transform: scale(0.9);
-  background: rgba(255, 255, 255, 0.25);
-}
-
 .dbg-overlay {
   position: fixed;
   inset: 0;
@@ -81,7 +44,7 @@
   position: relative;
   box-sizing: border-box;
   width: 680px;
-  height: 420px;
+  height: 540px;
   padding: 22px 26px 24px;
   border-radius: 28px;
   background: rgba(20, 22, 26, 0.9);
@@ -251,4 +214,88 @@
   line-height: 1.2;
   letter-spacing: normal;
   text-shadow: none;
+}
+
+/* ===== Mic & camera strip ===== */
+.dbg-priv {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+}
+
+.dbg-cam {
+  position: relative;
+  flex: none;
+  width: 128px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.dbg-cam video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.dbg-cam-off {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.dbg-cam-off i {
+  font-size: 0.9rem;
+}
+
+.dbg-cam.live .dbg-cam-off {
+  display: none;
+}
+
+.dbg-cam.live {
+  border-color: rgba(255, 159, 10, 0.7);
+}
+
+.dbg-mic {
+  flex: 1;
+  min-width: 0;
+}
+
+.dbg-meter {
+  height: 10px;
+  margin: 4px 0 8px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dbg-meter-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(to right, #00ff7f, #ffcc00 70%, #ff3b30);
+  transition: width 0.06s linear;
+}
+
+.dbg-priv-text {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dbg-priv-text.live {
+  color: #ff9f0a;
 }

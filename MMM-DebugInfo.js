@@ -1,7 +1,7 @@
 /* MMM-DebugInfo
  *
- * mode "debug" (default): a small bug badge next to the intercom's mic / camera badges.
- * Tapping it toggles a landscape frosted card (same style as MMM-AlarmKeypad) with live
+ * mode "debug" (default): tapping the STATUS pill in the bottom row (drawn by MMM-Intercom,
+ * with its mic / camera / bug badges) toggles a landscape frosted card (same style as MMM-AlarmKeypad) with live
  * diagnostics for this display: room, config, tablet (via Fully's JS interface), network
  * and the MagicMirror server. Nothing is shown on the mirror until the badge is tapped.
  * The card closes itself after `menuTimeout` seconds untouched.
@@ -16,8 +16,6 @@ Module.register('MMM-DebugInfo', {
     mode: 'debug',
     menuTimeout: 120,               // seconds untouched before the card closes (0 = never)
     refreshInterval: 2000,          // live values while the card is open
-    left: null,                     // badge position in CSS px (default: after the intercom's
-    bottom: null,                   // mic / camera badges, bottom centre)
     connectivityCheckInterval: 10 * 1000,
     connectivityCheckTimeout: 5 * 1000,
   },
@@ -122,6 +120,7 @@ Module.register('MMM-DebugInfo', {
   },
 
   close() {
+    this.stopPrivacy();
     this.visible = false;
     this.overlay.classList.remove('visible');
     clearInterval(this.refreshTimer);
@@ -229,7 +228,78 @@ Module.register('MMM-DebugInfo', {
     ];
   },
 
+  // ===== Mic & camera: shows what the intercom is capturing. Never opens the mic or camera
+  // itself; outside a call there's no stream, so both read as off. =====
+  intercomStream() {
+    const ic = MM.getModules().find((m) => m.name === 'MMM-Intercom');
+    const s = ic && typeof ic.localStream === 'function' ? ic.localStream() : null;
+    return s && s.getTracks().some((t) => t.readyState === 'live') ? s : null;
+  },
+
+  renderPrivacy() {
+    if (!this.camVideo || !this.visible) return;
+    const stream = this.intercomStream();
+    const audio = stream ? stream.getAudioTracks().filter((t) => t.readyState === 'live' && t.enabled) : [];
+    const video = stream ? stream.getVideoTracks().filter((t) => t.readyState === 'live' && t.enabled) : [];
+
+    // Camera preview
+    const vKey = video.map((t) => t.id).join();
+    if (vKey !== this.vKey) {
+      this.vKey = vKey;
+      this.camVideo.srcObject = video.length ? new MediaStream(video) : null;
+    }
+    this.camBox.classList.toggle('live', video.length > 0);
+
+    // Mic level meter
+    const aKey = audio.map((t) => t.id).join();
+    if (aKey !== this.aKey) {
+      this.aKey = aKey;
+      this.stopMeter();
+      if (audio.length) this.startMeter(new MediaStream(audio));
+    }
+    this.privText.textContent = audio.length || video.length
+      ? `Live: ${[audio.length && 'microphone', video.length && 'camera'].filter(Boolean).join(' + ')} (intercom call)`
+      : 'Microphone and camera are off';
+    this.privText.classList.toggle('live', audio.length > 0 || video.length > 0);
+  },
+
+  startMeter(stream) {
+    try {
+      this.actx = this.actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (this.actx.state === 'suspended') this.actx.resume();
+      this.meterSrc = this.actx.createMediaStreamSource(stream);
+      const an = this.actx.createAnalyser();
+      an.fftSize = 512;
+      this.meterSrc.connect(an);   // analyser only: nothing is played
+      const buf = new Uint8Array(an.fftSize);
+      const loop = () => {
+        an.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+        this.meterFill.style.width = `${Math.min(100, (peak / 128) * 160)}%`;
+        this.meterRaf = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch {
+      // no Web Audio
+    }
+  },
+
+  stopMeter() {
+    cancelAnimationFrame(this.meterRaf);
+    if (this.meterSrc) this.meterSrc.disconnect();
+    this.meterSrc = null;
+    if (this.meterFill) this.meterFill.style.width = '0%';
+  },
+
+  stopPrivacy() {
+    this.stopMeter();
+    this.aKey = this.vKey = undefined;
+    if (this.camVideo) this.camVideo.srcObject = null;
+  },
+
   renderData() {
+    this.renderPrivacy();
     if (!this.body || !this.visible) return;
     const data = this.sections();
     if (!this.cells) {
@@ -274,10 +344,7 @@ Module.register('MMM-DebugInfo', {
   buildDebugDom() {
     const root = document.createElement('div');
     root.className = 'dbg-root';
-    if (this.config.left !== null) root.style.setProperty('--dbg-left', `${this.config.left}px`);
-    if (this.config.bottom !== null) root.style.setProperty('--dbg-bottom', `${this.config.bottom}px`);
     root.innerHTML = `
-      <div class="dbg-badge" role="button" aria-label="Debug"><i class="fa-solid fa-bug"></i></div>
       <div class="dbg-overlay">
         <div class="dbg-card">
           <div class="dbg-head">
@@ -289,13 +356,28 @@ Module.register('MMM-DebugInfo', {
           </div>
           <button class="dbg-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
           <div class="dbg-body"></div>
+          <div class="dbg-priv">
+            <div class="dbg-cam"><video muted playsinline autoplay></video><div class="dbg-cam-off"><i class="fa-solid fa-video-slash"></i>Camera off</div></div>
+            <div class="dbg-mic">
+              <div class="dbg-sec-title"><i class="fa-solid fa-microphone"></i>Mic &amp; camera</div>
+              <div class="dbg-meter"><div class="dbg-meter-fill"></div></div>
+              <div class="dbg-priv-text"></div>
+            </div>
+          </div>
         </div>
       </div>`;
     this.overlay = root.querySelector('.dbg-overlay');
     this.body = root.querySelector('.dbg-body');
     this.subtitle = root.querySelector('.dbg-subtitle');
+    this.camVideo = root.querySelector('.dbg-cam video');
+    this.camBox = root.querySelector('.dbg-cam');
+    this.meterFill = root.querySelector('.dbg-meter-fill');
+    this.privText = root.querySelector('.dbg-priv-text');
 
-    root.querySelector('.dbg-badge').addEventListener('click', () => (this.visible ? this.close() : this.open()));
+    // The intercom's STATUS pill (.ic-indicators) opens the card; delegated, so it survives re-renders.
+    document.addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('.ic-indicators')) (this.visible ? this.close() : this.open());
+    });
     root.querySelector('.dbg-close').addEventListener('click', () => this.close());
     // Tap outside the card closes; "click" so the tap can't fall through once hidden.
     this.overlay.addEventListener('click', (e) => {
