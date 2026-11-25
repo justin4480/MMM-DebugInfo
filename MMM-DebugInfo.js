@@ -257,10 +257,71 @@ Module.register('MMM-DebugInfo', {
       this.stopMeter();
       if (audio.length) this.startMeter(new MediaStream(audio));
     }
-    this.privText.textContent = audio.length || video.length
-      ? `Live: ${[audio.length && 'microphone', video.length && 'camera'].filter(Boolean).join(' + ')} (intercom call)`
-      : 'Microphone and camera are off';
-    this.privText.classList.toggle('live', audio.length > 0 || video.length > 0);
+    const micLive = audio.length > 0;
+    this.micIcon.className = `dbg-av-icon dbg-mic-icon fa-solid fa-${micLive ? 'microphone live' : 'microphone-slash'}`;
+    this.micVal.textContent = micLive ? 'Live' : 'Off';
+    this.micVal.classList.toggle('live', micLive);
+    this.renderVolume();
+  },
+
+  // ===== Speaker volume (tablet media / call volume via Fully's JS interface) =====
+  hasVolume() {
+    return typeof fully !== 'undefined' && typeof fully.getAudioVolume === 'function' && typeof fully.setAudioVolume === 'function';
+  },
+
+  bindVolume() {
+    const apply = (final) => {
+      const v = Number(this.volSlider.value);
+      this.showVolume(v);
+      clearTimeout(this.volTimer);
+      this.volTimer = setTimeout(() => this.setVolume(v), final ? 0 : 120);
+    };
+    this.volSlider.addEventListener('input', () => {
+      this.volDragging = true;
+      this.armMenuTimeout();
+      apply(false);
+    });
+    this.volSlider.addEventListener('change', () => {
+      this.volDragging = false;
+      apply(true);
+    });
+  },
+
+  // Through MMM-Intercom when present, so its volume tracking stays in step (media + call streams).
+  setVolume(v) {
+    if (!this.hasVolume()) return;
+    const ic = MM.getModules().find((m) => m.name === 'MMM-Intercom');
+    try {
+      if (ic && typeof ic.setSysVolume === 'function' && ic.hasSysVolume && ic.hasSysVolume()) ic.setSysVolume(v);
+      else fully.setAudioVolume(v, 3);
+    } catch {
+      // not in Fully
+    }
+  },
+
+  showVolume(v) {
+    this.volSlider.style.setProperty('--fill', `${v}%`);
+    this.spkVal.textContent = `${v}%`;
+    const icon = v === 0 ? 'volume-xmark' : v < 50 ? 'volume-low' : 'volume-high';
+    this.spkIcon.className = `dbg-av-icon dbg-spk-icon fa-solid fa-${icon}${v === 0 ? ' muted' : ''}`;
+  },
+
+  renderVolume() {
+    if (!this.volSlider || this.volDragging) return;
+    if (!this.hasVolume()) {
+      this.volSlider.disabled = true;
+      this.spkVal.textContent = '—';
+      return;
+    }
+    let v;
+    try {
+      v = Number(fully.getAudioVolume(3));
+    } catch {
+      return;
+    }
+    if (!Number.isFinite(v)) return;
+    this.volSlider.value = v;
+    this.showVolume(v);
   },
 
   startMeter(stream) {
@@ -357,12 +418,22 @@ Module.register('MMM-DebugInfo', {
           <button class="dbg-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
           <div class="dbg-body"></div>
           <div class="dbg-priv">
-            <div class="dbg-cam"><video muted playsinline autoplay></video><div class="dbg-cam-off"><i class="fa-solid fa-video-slash"></i>Camera off</div></div>
-            <div class="dbg-mic">
-              <div class="dbg-sec-title"><i class="fa-solid fa-microphone"></i>Mic &amp; camera</div>
-              <div class="dbg-meter"><div class="dbg-meter-fill"></div></div>
-              <div class="dbg-priv-text"></div>
+            <div class="dbg-priv-left">
+              <div class="dbg-sec-title"><i class="fa-solid fa-headset"></i>Mic, speaker &amp; camera</div>
+              <div class="dbg-av-row">
+                <i class="dbg-av-icon dbg-mic-icon fa-solid fa-microphone-slash"></i>
+                <span class="dbg-av-label">Mic</span>
+                <div class="dbg-meter"><div class="dbg-meter-fill"></div></div>
+                <span class="dbg-av-val dbg-mic-val">Off</span>
+              </div>
+              <div class="dbg-av-row">
+                <i class="dbg-av-icon dbg-spk-icon fa-solid fa-volume-high"></i>
+                <span class="dbg-av-label">Speaker</span>
+                <input class="dbg-vol" type="range" min="0" max="100" step="1">
+                <span class="dbg-av-val dbg-spk-val">—</span>
+              </div>
             </div>
+            <div class="dbg-cam"><video muted playsinline autoplay></video><div class="dbg-cam-off"><i class="fa-solid fa-video-slash"></i>Camera off</div></div>
           </div>
         </div>
       </div>`;
@@ -372,7 +443,12 @@ Module.register('MMM-DebugInfo', {
     this.camVideo = root.querySelector('.dbg-cam video');
     this.camBox = root.querySelector('.dbg-cam');
     this.meterFill = root.querySelector('.dbg-meter-fill');
-    this.privText = root.querySelector('.dbg-priv-text');
+    this.micIcon = root.querySelector('.dbg-mic-icon');
+    this.micVal = root.querySelector('.dbg-mic-val');
+    this.spkIcon = root.querySelector('.dbg-spk-icon');
+    this.spkVal = root.querySelector('.dbg-spk-val');
+    this.volSlider = root.querySelector('.dbg-vol');
+    this.bindVolume();
 
     // The intercom's STATUS pill (.ic-indicators) opens the card; delegated, so it survives re-renders.
     document.addEventListener('click', (e) => {

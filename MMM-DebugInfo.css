@@ -44,7 +44,7 @@
   position: relative;
   box-sizing: border-box;
   width: 680px;
-  height: 540px;
+  height: 560px;
   padding: 22px 26px 24px;
   border-radius: 28px;
   background: rgba(20, 22, 26, 0.9);
@@ -216,22 +216,118 @@
   text-shadow: none;
 }
 
-/* ===== Mic & camera strip ===== */
+/* ===== Mic, speaker & camera strip: title + two rows on the left, camera on the right ===== */
 .dbg-priv {
   display: flex;
-  gap: 18px;
-  align-items: center;
+  gap: 22px;
+  align-items: stretch;
   margin-top: 16px;
   padding-top: 14px;
   border-top: 0.5px solid rgba(255, 255, 255, 0.12);
 }
 
+.dbg-priv-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dbg-priv-left .dbg-sec-title {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 2px;
+}
+
+.dbg-av-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 30px;
+}
+
+.dbg-av-icon {
+  width: 22px;
+  text-align: center;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dbg-av-icon.live {
+  color: #ff9f0a;
+}
+
+.dbg-av-icon.muted {
+  color: #ff453a;
+}
+
+.dbg-av-label {
+  width: 62px;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dbg-av-val {
+  width: 40px;
+  text-align: right;
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dbg-av-val.live {
+  color: #ff9f0a;
+}
+
+.dbg-meter {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dbg-meter-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(to right, #00ff7f, #ffcc00 70%, #ff3b30);
+  transition: width 0.06s linear;
+}
+
+/* Speaker volume slider (same look as the intercom's). */
+.dbg-vol {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 10px;
+  margin: 0;
+  border-radius: 5px;
+  outline: none;
+  touch-action: none;
+  background: linear-gradient(to right, #fff 0%, #fff var(--fill, 50%), rgba(255, 255, 255, 0.18) var(--fill, 50%));
+}
+
+.dbg-vol::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dbg-vol:disabled {
+  opacity: 0.35;
+}
+
 .dbg-cam {
   position: relative;
   flex: none;
-  width: 128px;
-  height: 72px;
-  border-radius: 10px;
+  width: 150px;
+  height: 92px;
+  align-self: flex-end;
+  border-radius: 12px;
   overflow: hidden;
   background: #000;
   border: 0.5px solid rgba(255, 255, 255, 0.15);
@@ -251,7 +347,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 0.6rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -259,7 +355,7 @@
 }
 
 .dbg-cam-off i {
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .dbg-cam.live .dbg-cam-off {
@@ -268,34 +364,4 @@
 
 .dbg-cam.live {
   border-color: rgba(255, 159, 10, 0.7);
-}
-
-.dbg-mic {
-  flex: 1;
-  min-width: 0;
-}
-
-.dbg-meter {
-  height: 10px;
-  margin: 4px 0 8px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.dbg-meter-fill {
-  width: 0;
-  height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(to right, #00ff7f, #ffcc00 70%, #ff3b30);
-  transition: width 0.06s linear;
-}
-
-.dbg-priv-text {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.dbg-priv-text.live {
-  color: #ff9f0a;
 }
